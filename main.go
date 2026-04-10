@@ -14,8 +14,6 @@ type TreeNode struct {
 
 func main() {
 
-
-
 	//type t struct {
 	//}
 	//
@@ -25,28 +23,26 @@ func main() {
 	//i = (*t)(nil)
 	//fmt.Println(i == nil)
 
-
 	//var a = []int{1,2,3}
 	//var b = []int{4,5,6}
 	//
 	//fmt.Println(KthElement(a,b,2))
 
-	a := make([]int,0,5)
+	a := make([]int, 0, 5)
 
-	a= append(a )
+	a = append(a, 1)
 
 }
 
 func KthElement(a []int, b []int, k int) int {
 
-	
 	left, right, t := len(a)-1, len(b)-1, len(a)+len(b)
-	
-	if k > left + right {
+
+	if k > left+right {
 		return -1
 	}
 
-	c := make([]int,t)
+	c := make([]int, t)
 	for left >= 0 && right >= 0 {
 
 		if a[left] > b[right] {

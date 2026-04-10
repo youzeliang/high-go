@@ -75,3 +75,81 @@ func NewObjectPool(factory func() interface{}) *ObjectPool {
 ```bash
 go test -bench="Pool$" -benchmem ./code/pool/
 ```
+
+---
+
+## 减少 GC 压力的高级池化技术
+
+### 1. JSON 编码池 (JSONBufferPool)
+
+在高吞吐量 JSON 处理场景中，复用 bytes.Buffer 可显著减少 GC 压力：
+
+```go
+type JSONBufferPool struct {
+    pool sync.Pool
+}
+
+func NewJSONBufferPool() *JSONBufferPool {
+    return &JSONBufferPool{
+        pool: sync.Pool{
+            New: func() interface{} { return &bytes.Buffer{} },
+        },
+    }
+}
+```
+
+**性能对比:**
+```
+BenchmarkJSONEncodingNoPool-8      4256054  283.7 ns/op  352 B/op  4 allocs/op
+BenchmarkJSONEncodingWithPool-8    5040988  238.5 ns/op  192 B/op  2 allocs/op
+```
+- 减少 50% 内存分配
+- 提升约 20% 性能
+
+### 2. 多尺寸对象池 (MultiSizeObjectPool)
+
+针对不同大小的缓冲区维护专用池，减少内存碎片：
+
+```go
+type MultiSizeObjectPool struct {
+    pools []sync.Pool
+    sizes []int
+}
+```
+
+**性能对比:**
+```
+BenchmarkMultiSizeNoPool-8    1934446  626.8 ns/op  1816 B/op  1 allocs/op
+BenchmarkMultiSizePoolGet-8  2171092  576.8 ns/op    24 B/op  1 allocs/op
+```
+
+### 3. 行缓冲区池 (RowBufferPool)
+
+数据库行处理场景，减少结构体分配：
+
+```go
+type RowBuffer struct {
+    Columns []string
+    Values  []interface{}
+}
+```
+
+**性能对比:**
+```
+BenchmarkRowBufferNoPool-8    11245694   115.0 ns/op  512 B/op  2 allocs/op
+BenchmarkRowBufferWithPool-8 129770016     8.4 ns/op    0 B/op  0 allocs/op
+```
+- **13x 性能提升**
+- 零内存分配
+
+## 实战建议
+
+1. **热点对象优先** - 对于频繁分配/释放的对象考虑池化
+2. **注意池大小** - 过大占用内存，过小效果不明显
+3. **避免池中对象累积** - 及时回收不使用的对象
+4. **结合实际场景** - JSON 处理、数据库行缓冲、临时缓冲区等
+
+```bash
+# 运行所有池化技术 benchmarks
+go test -bench="." -benchmem ./code/pool/
+```
